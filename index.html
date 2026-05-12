@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lelang Barang Kantor</title>
+<style>
+  :root {
+    --bg: #f9f8f6;
+    --surface: #ffffff;
+    --surface2: #f2f1ee;
+    --border: rgba(0,0,0,0.1);
+    --border2: rgba(0,0,0,0.18);
+    --text: #1a1a18;
+    --text2: #6b6b67;
+    --text3: #a0a09b;
+    --green: #0f6e56;
+    --green-bg: #e1f5ee;
+    --blue: #185fa5;
+    --blue-bg: #e6f1fb;
+    --amber: #854f0b;
+    --amber-bg: #faeeda;
+    --red: #a32d2d;
+    --red-bg: #fcebeb;
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #181816;
+      --surface: #242422;
+      --surface2: #2e2e2b;
+      --border: rgba(255,255,255,0.1);
+      --border2: rgba(255,255,255,0.18);
+      --text: #f0efe9;
+      --text2: #a0a09b;
+      --text3: #6b6b67;
+      --green: #5dcaa5;
+      --green-bg: #04342c;
+      --blue: #85b7eb;
+      --blue-bg: #042c53;
+      --amber: #ef9f27;
+      --amber-bg: #412402;
+      --red: #f09595;
+      --red-bg: #501313;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  .header { background: var(--surface); border-bottom: 0.5px solid var(--border); padding: 14px 20px; position: sticky; top: 0; z-index: 100; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .header-title { font-size: 17px; font-weight: 600; flex: 1; }
+  .header-sub { font-size: 12px; color: var(--text2); }
+  .online-dot { width: 8px; height: 8px; border-radius: 50%; background: #ccc; display: inline-block; margin-right: 4px; }
+  .online-dot.live { background: #1D9E75; animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  .setup-banner { background: var(--amber-bg); border: 0.5px solid var(--amber); border-radius: var(--radius); margin: 16px; padding: 14px 16px; font-size: 13px; color: var(--amber); }
+  .setup-banner h3 { font-size: 14px; margin-bottom: 8px; }
+  .setup-banner code { background: rgba(0,0,0,0.08); border-radius: 4px; padding: 1px 5px; font-family: monospace; font-size: 12px; }
+  .setup-banner input { width: 100%; margin-top: 6px; padding: 8px 10px; border-radius: var(--radius-sm); border: 0.5px solid var(--amber); background: var(--surface); color: var(--text); font-size: 13px; }
+  .setup-banner button { margin-top: 8px; padding: 8px 16px; background: var(--amber); color: white; border: none; border-radius: var(--radius-sm); font-size: 13px; cursor: pointer; }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; padding: 12px 16px 0; }
+  .stat { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; }
+  .stat .lbl { font-size: 11px; color: var(--text2); margin-bottom: 3px; }
+  .stat .val { font-size: 18px; font-weight: 600; }
+
+  .toolbar { padding: 10px 16px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .toolbar input, .toolbar select { padding: 8px 10px; border: 0.5px solid var(--border2); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font-size: 13px; }
+  .toolbar input { flex: 1; min-width: 130px; }
+
+  .section-label { padding: 6px 16px 4px; font-size: 11px; font-weight: 600; color: var(--text3); letter-spacing: 0.06em; text-transform: uppercase; }
+
+  .items { padding: 0 16px 80px; display: flex; flex-direction: column; gap: 8px; }
+  .card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 12px 14px; transition: border-color 0.2s; }
+  .card.won { border-color: var(--green); border-width: 1.5px; }
+  .card.buynow { border-color: var(--blue); border-width: 1.5px; }
+
+  .card-top { display: flex; gap: 10px; align-items: flex-start; }
+  .card-num { font-size: 11px; color: var(--text3); min-width: 20px; padding-top: 2px; }
+  .card-body { flex: 1; min-width: 0; }
+  .card-name { font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .card-meta { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+  .badge { font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 500; }
+  .badge-lelang { background: var(--blue-bg); color: var(--blue); }
+  .badge-won { background: var(--green-bg); color: var(--green); }
+  .badge-bn { background: var(--blue-bg); color: var(--blue); }
+  .badge-gray { background: var(--surface2); color: var(--text2); }
+
+  .prices { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; }
+  .price-item .lbl { font-size: 11px; color: var(--text3); }
+  .price-item .val { font-size: 13px; font-weight: 600; }
+  .price-item .val.green { color: var(--green); }
+  .price-item .val.blue { color: var(--blue); }
+
+  .bid-row { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+  .bid-row input { padding: 8px 10px; border: 0.5px solid var(--border2); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); font-size: 13px; }
+  .bid-row input.inp-name { width: 120px; }
+  .bid-row input.inp-amt { width: 130px; }
+  .btn { padding: 8px 14px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 500; cursor: pointer; border: 0.5px solid var(--border2); background: var(--surface); color: var(--text); }
+  .btn:hover { background: var(--surface2); }
+  .btn:active { transform: scale(0.97); }
+  .btn-green { background: var(--green-bg); border-color: var(--green); color: var(--green); }
+  .btn-blue { background: var(--blue-bg); border-color: var(--blue); color: var(--blue); }
+  .btn-red { background: var(--red-bg); border-color: var(--red); color: var(--red); }
+
+  .bid-history { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 4px; }
+  .bid-chip { font-size: 11px; background: var(--surface2); border-radius: 4px; padding: 2px 7px; color: var(--text2); }
+  .bid-chip.top { background: var(--green-bg); color: var(--green); font-weight: 600; }
+
+  .winner-row { margin-top: 8px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .winner-name { font-size: 14px; font-weight: 600; color: var(--green); }
+  .winner-price { font-size: 13px; color: var(--text2); }
+
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1a1a18; color: #f0efe9; padding: 10px 20px; border-radius: 24px; font-size: 13px; opacity: 0; transition: opacity 0.25s; pointer-events: none; z-index: 999; white-space: nowrap; max-width: 90vw; }
+  .toast.show { opacity: 1; }
+
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; align-items: center; justify-content: center; padding: 20px; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--surface); border-radius: var(--radius); padding: 20px; max-width: 480px; width: 100%; max-height: 80vh; overflow-y: auto; }
+  .modal h2 { font-size: 16px; margin-bottom: 14px; }
+  .recap-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 0.5px solid var(--border); font-size: 13px; gap: 8px; }
+  .recap-row:last-child { border-bottom: none; }
+  .recap-winner { font-weight: 600; color: var(--green); }
+  .recap-total { margin-top: 12px; font-size: 15px; font-weight: 600; text-align: right; }
+  .modal-close { margin-top: 14px; width: 100%; }
+
+  @media(max-width: 500px) {
+    .bid-row input.inp-name { width: 100px; }
+    .bid-row input.inp-amt { width: 110px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="header-title">🔨 Lelang Barang Kantor</div>
+    <div class="header-sub"><span class="online-dot" id="dot"></span><span id="conn-status">Menghubungkan...</span></div>
+  </div>
+  <button class="btn" onclick="showRecap()">📋 Rekap</button>
+</div>
+
+<!-- SETUP BANNER — akan hilang setelah Firebase dikonfigurasi -->
+<div class="setup-banner" id="setup-banner">
+  <h3>⚙️ Langkah terakhir: masukkan Firebase config</h3>
+  Buka file ini, cari <code>GANTI_FIREBASE_CONFIG</code>, lalu isi dengan config Firebase kamu.<br><br>
+  Atau paste Database URL di sini untuk langsung pakai:
+  <input type="text" id="db-url-input" placeholder="https://nama-project-default-rtdb.firebaseio.com">
+  <button onclick="saveDbUrl()">Simpan & Mulai</button>
+</div>
+
+<div class="stats">
+  <div class="stat"><div class="lbl">Total barang</div><div class="val" id="s-total">—</div></div>
+  <div class="stat"><div class="lbl">Terjual</div><div class="val" id="s-sold">—</div></div>
+  <div class="stat"><div class="lbl">Open</div><div class="val" id="s-open">—</div></div>
+  <div class="stat"><div class="lbl">Terkumpul</div><div class="val" id="s-rev" style="font-size:14px">—</div></div>
+</div>
+
+<div class="toolbar">
+  <input type="text" id="search" placeholder="Cari barang..." oninput="renderAll()">
+  <select id="filter" onchange="renderAll()">
+    <option value="all">Semua</option>
+    <option value="open">Open</option>
+    <option value="won">Terjual</option>
+  </select>
+</div>
+
+<div id="main-list"></div>
+
+<div class="toast" id="toast"></div>
+
+<div class="modal-overlay" id="recap-modal">
+  <div class="modal">
+    <h2>📋 Rekap Pemenang</h2>
+    <div id="recap-content"></div>
+    <button class="btn modal-close" onclick="closeRecap()">Tutup</button>
+  </div>
+</div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script>
+// ============================================================
+//  GANTI_FIREBASE_CONFIG — isi bagian ini dengan config kamu
+// ============================================================
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBcxg8EeYMBIJPDVcl82HetvDhkM2gHlR0",
+  authDomain: "lelangdilelang-2e8ba.firebaseapp.com",
+  databaseURL: "https://lelangdilelang-2e8ba-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "lelangdilelang-2e8ba",
+  storageBucket: "lelangdilelang-2e8ba.firebasestorage.app",
+  messagingSenderId: "938321323861",
+  appId: "1:938321323861:web:bbfa095c1464391530f1dc"
+};
+// ============================================================
+
+const RAW_ITEMS = [
+  {id:1,name:"TV 1",ket:"dibawa ke atas",merk:"LG",bn:3000000,minBid:100000},
+  {id:2,name:"TV 2",ket:"Lelang",merk:"Coocaa",bn:4000000,minBid:100000},
+  {id:3,name:"PC",ket:"belum diputuskan",merk:"HP",bn:null,minBid:null},
+  {id:4,name:"Lemari Putih 1",ket:"Lelang",merk:"Informa",bn:500000,minBid:50000},
+  {id:5,name:"Lemari Putih 2",ket:"Lelang",merk:"Informa",bn:500000,minBid:50000},
+  {id:6,name:"Lemari Cokelat",ket:"Lelang",merk:"Custom",bn:500000,minBid:50000},
+  {id:7,name:"Air Fryer",ket:"Lelang",merk:"Philips",bn:null,minBid:50000},
+  {id:9,name:"Microwave 1",ket:"Lelang",merk:"Sharp (putih)",bn:800000,minBid:50000},
+  {id:10,name:"Microwave 2",ket:"Lelang",merk:"Sharp (abu)",bn:1659000,minBid:50000},
+  {id:11,name:"Kettle Pemanas",ket:"dibawa ke atas",merk:"-",bn:null,minBid:50000},
+  {id:12,name:"Dispenser 1",ket:"Lelang",merk:"Klaz",bn:3000000,minBid:100000},
+  {id:13,name:"Dispenser 2",ket:"Lelang",merk:"Kris",bn:2500000,minBid:100000},
+  {id:14,name:"Kulkas 1",ket:"Lelang",merk:"Hisense",bn:1500000,minBid:50000},
+  {id:15,name:"Kulkas 2",ket:"Lelang",merk:"Sharp",bn:1300000,minBid:50000},
+  {id:16,name:"Printer",ket:"dibawa ke atas",merk:"HP",bn:null,minBid:null},
+  {id:17,name:"Meja Lesehan",ket:"dibawa ke atas",merk:"Custom",bn:null,minBid:null},
+  {id:18,name:"Toaster 1",ket:"Lelang",merk:"Philips",bn:300000,minBid:50000},
+  {id:19,name:"Toaster Sandwich",ket:"Lelang",merk:"Philips",bn:300000,minBid:50000},
+  {id:20,name:"Rumput Sintetis",ket:"Lelang",merk:"-",bn:null,minBid:200000},
+  {id:21,name:"Bean Bag",ket:"dibawa ke atas",merk:"-",bn:null,minBid:null},
+  {id:22,name:"Boneka",ket:"Lelang",merk:"-",bn:200000,minBid:50000},
+  {id:23,name:"Cermin",ket:"dibawa ke atas",merk:"Informa",bn:null,minBid:null},
+  {id:24,name:"Kursi Bulat Besi",ket:"belum diputuskan",merk:">5",bn:null,minBid:null},
+  {id:25,name:"Alat Masak Set",ket:"Lelang",merk:"-",bn:100000,minBid:20000},
+  {id:26,name:"Toples",ket:"dibawa ke atas",merk:"-",bn:null,minBid:null},
+  {id:27,name:"Server",ket:"dibawa ke atas",merk:"HP",bn:null,minBid:null},
+  {id:28,name:"Papan Tulis",ket:"ditinggal",merk:"-",bn:null,minBid:null},
+  {id:29,name:"Trolley",ket:"dibawa ke atas",merk:"Informa",bn:null,minBid:null},
+];
+
+let db = null;
+let liveData = {};
+let configured = false;
+
+function fmt(n) {
+  if (!n && n !== 0) return "-";
+  return "Rp" + Math.round(n).toLocaleString("id-ID");
+}
+function parseAmt(s) {
+  s = String(s).replace(/[Rr][Pp]?/g,"").replace(/\./g,"").replace(/,/g,"").trim();
+  const n = parseFloat(s);
+  return isNaN(n) ? null : n;
+}
+function toast(msg) {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove("show"), 2400);
+}
+
+function initFirebase(dbUrl) {
+  try {
+    const cfg = dbUrl
+      ? {...FIREBASE_CONFIG, databaseURL: dbUrl}
+      : FIREBASE_CONFIG;
+    if (cfg.databaseURL === "GANTI_DATABASE_URL" && !dbUrl) return;
+    const app = firebase.initializeApp(cfg);
+    db = firebase.database(app);
+    document.getElementById("setup-banner").style.display = "none";
+    configured = true;
+    subscribeData();
+    setConn(true);
+  } catch(e) {
+    console.error("Firebase init error:", e);
+    setConn(false);
+  }
+}
+
+function setConn(ok) {
+  document.getElementById("dot").className = "online-dot" + (ok ? " live" : "");
+  document.getElementById("conn-status").textContent = ok ? "Live — tersinkron" : "Offline";
+}
+
+function subscribeData() {
+  if (!db) return;
+  db.ref("items").on("value", snap => {
+    liveData = snap.val() || {};
+    renderAll();
+  });
+  db.ref(".info/connected").on("value", snap => setConn(snap.val()));
+}
+
+function getItemState(id) {
+  return liveData[id] || {bids: {}, winner: null, winPrice: null, wonByBuyNow: false};
+}
+
+function doBid(id) {
+  if (!configured) { toast("Konfigurasi Firebase dulu!"); return; }
+  const item = RAW_ITEMS.find(i => i.id === id);
+  const state = getItemState(id);
+  if (state.winner) return;
+  const nameEl = document.getElementById("bname-" + id);
+  const amtEl = document.getElementById("bamt-" + id);
+  const name = (nameEl.value || "").trim();
+  const amt = parseAmt(amtEl.value);
+  if (!name) { nameEl.focus(); toast("Isi nama bidder!"); return; }
+  if (!amt || amt <= 0) { amtEl.focus(); toast("Masukkan nominal yang valid."); return; }
+  const bidsArr = state.bids ? Object.values(state.bids) : [];
+  const topAmt = bidsArr.length ? Math.max(...bidsArr.map(b => b.amt)) : 0;
+  const minNext = topAmt > 0 ? topAmt + (item.minBid || 0) : (item.minBid || 0);
+  if (amt < minNext) { toast("Bid minimal " + fmt(minNext)); return; }
+  db.ref("items/" + id + "/bids").push({name, amt, time: Date.now()});
+  nameEl.value = "";
+  amtEl.value = "";
+  toast("Bid " + fmt(amt) + " dari " + name + " tercatat! 🎯");
+}
+
+function doBuyNow(id) {
+  if (!configured) { toast("Konfigurasi Firebase dulu!"); return; }
+  const item = RAW_ITEMS.find(i => i.id === id);
+  const state = getItemState(id);
+  if (state.winner || !item.bn) return;
+  const nameEl = document.getElementById("bname-" + id);
+  const name = (nameEl.value || "").trim();
+  if (!name) { nameEl.focus(); toast("Isi nama pembeli!"); return; }
+  db.ref("items/" + id).update({winner: name, winPrice: item.bn, wonByBuyNow: true});
+  toast("🎉 " + name + " beli " + item.name + " dengan Buy Now!");
+}
+
+function finalizeWinner(id) {
+  if (!configured) return;
+  const state = getItemState(id);
+  const bidsArr = state.bids ? Object.values(state.bids) : [];
+  if (!bidsArr.length) return;
+  const top = bidsArr.reduce((a, b) => b.amt > a.amt ? b : a);
+  db.ref("items/" + id).update({winner: top.name, winPrice: top.amt, wonByBuyNow: false});
+  toast("✅ " + top.name + " menang seharga " + fmt(top.amt));
+}
+
+function undoWinner(id) {
+  if (!configured) return;
+  db.ref("items/" + id).update({winner: null, winPrice: null, wonByBuyNow: false});
+  toast("Pemenang dibatalkan.");
+}
+
+function renderAll() {
+  const q = (document.getElementById("search").value || "").toLowerCase();
+  const flt = document.getElementById("filter").value;
+  let sold = 0, open = 0, rev = 0;
+  RAW_ITEMS.forEach(item => {
+    const st = getItemState(item.id);
+    if (st.winner) { sold++; rev += st.winPrice || 0; } else open++;
+  });
+  document.getElementById("s-total").textContent = RAW_ITEMS.length;
+  document.getElementById("s-sold").textContent = sold;
+  document.getElementById("s-open").textContent = open;
+  document.getElementById("s-rev").textContent = "Rp" + Math.round(rev).toLocaleString("id-ID");
+
+  const visible = RAW_ITEMS.filter(item => {
+    const st = getItemState(item.id);
+    if (q && !item.name.toLowerCase().includes(q) && !(item.merk||"").toLowerCase().includes(q)) return false;
+    if (flt === "open" && st.winner) return false;
+    if (flt === "won" && !st.winner) return false;
+    return true;
+  });
+
+  const lelang = visible.filter(i => i.ket.toLowerCase() === "lelang");
+  const others = visible.filter(i => i.ket.toLowerCase() !== "lelang");
+
+  let html = "";
+  if (lelang.length) {
+    html += `<div class="section-label">Barang Lelang</div><div class="items">`;
+    lelang.forEach(item => html += renderCard(item));
+    html += `</div>`;
+  }
+  if (others.length) {
+    html += `<div class="section-label">Barang Lainnya</div><div class="items">`;
+    others.forEach(item => html += renderCard(item));
+    html += `</div>`;
+  }
+  if (!visible.length) html = `<div style="text-align:center;padding:3rem;color:#a0a09b;font-size:14px">Tidak ada barang ditemukan.</div>`;
+  document.getElementById("main-list").innerHTML = html;
+}
+
+function renderCard(item) {
+  const st = getItemState(item.id);
+  const bidsArr = st.bids ? Object.values(st.bids).sort((a,b) => a.amt - b.amt) : [];
+  const topBid = bidsArr.length ? bidsArr[bidsArr.length - 1] : null;
+  const isWon = !!st.winner;
+  const cls = isWon ? (st.wonByBuyNow ? "card buynow" : "card won") : "card";
+
+  let html = `<div class="${cls}">
+    <div class="card-top">
+      <div class="card-num">${item.id}</div>
+      <div class="card-body">
+        <div class="card-name">${item.name}
+          ${item.ket.toLowerCase()==="lelang" ? `<span class="badge badge-lelang">Lelang</span>` : `<span class="badge badge-gray">${item.ket}</span>`}
+          ${isWon && st.wonByBuyNow ? `<span class="badge badge-bn">Buy Now</span>` : ""}
+          ${isWon && !st.wonByBuyNow ? `<span class="badge badge-won">Terjual</span>` : ""}
+        </div>
+        <div class="card-meta">${item.merk && item.merk !== "-" ? item.merk : ""}</div>
+      </div>
+    </div>`;
+
+  if (!isWon) {
+    html += `<div class="prices">`;
+    if (item.bn) html += `<div class="price-item"><div class="lbl">Buy Now</div><div class="val blue">${fmt(item.bn)}</div></div>`;
+    if (item.minBid) html += `<div class="price-item"><div class="lbl">Min bid</div><div class="val">${fmt(item.minBid)}</div></div>`;
+    if (topBid) html += `<div class="price-item"><div class="lbl">Top bid</div><div class="val green">${fmt(topBid.amt)} — ${topBid.name}</div></div>`;
+    html += `</div>`;
+
+    if (item.bn || item.minBid) {
+      html += `<div class="bid-row">
+        <input type="text" class="inp-name" id="bname-${item.id}" placeholder="Nama kamu">
+        <input type="text" class="inp-amt" id="bamt-${item.id}" placeholder="${topBid ? fmt(topBid.amt + (item.minBid||0)) : fmt(item.minBid)}" onkeydown="if(event.key==='Enter')doBid(${item.id})">
+        <button class="btn btn-green" onclick="doBid(${item.id})">🔨 Bid</button>
+        ${item.bn ? `<button class="btn btn-blue" onclick="doBuyNow(${item.id})">⚡ Buy Now</button>` : ""}
+        ${bidsArr.length ? `<button class="btn" onclick="finalizeWinner(${item.id})">✅ Tutup</button>` : ""}
+      </div>`;
+    }
+
+    if (bidsArr.length) {
+      html += `<div class="bid-history">`;
+      bidsArr.forEach((b, i) => {
+        const isTop = i === bidsArr.length - 1;
+        html += `<span class="bid-chip${isTop?" top":""}">${b.name}: ${fmt(b.amt)}</span>`;
+      });
+      html += `</div>`;
+    }
+  } else {
+    html += `<div class="winner-row">
+      <span>🏆</span>
+      <span class="winner-name">${st.winner}</span>
+      <span class="winner-price">${fmt(st.winPrice)}</span>
+      <button class="btn btn-red" style="font-size:11px;padding:4px 10px" onclick="undoWinner(${item.id})">Batalkan</button>
+    </div>`;
+  }
+
+  html += `</div>`;
+  return html;
+}
+
+function showRecap() {
+  const won = RAW_ITEMS.filter(i => {
+    const st = getItemState(i.id);
+    return !!st.winner;
+  });
+  let html = "";
+  let total = 0;
+  if (!won.length) {
+    html = `<div style="color:var(--text2);font-size:13px;text-align:center;padding:1rem">Belum ada barang terjual.</div>`;
+  } else {
+    won.forEach(item => {
+      const st = getItemState(item.id);
+      total += st.winPrice || 0;
+      html += `<div class="recap-row">
+        <div>
+          <div style="font-size:13px;font-weight:500">${item.name}</div>
+          <div style="font-size:11px;color:var(--text3)">${item.merk}${st.wonByBuyNow?" · Buy Now":""}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="recap-winner">${st.winner}</div>
+          <div style="font-size:12px;color:var(--text2)">${fmt(st.winPrice)}</div>
+        </div>
+      </div>`;
+    });
+    html += `<div class="recap-total">Total: ${fmt(total)}</div>`;
+  }
+  document.getElementById("recap-content").innerHTML = html;
+  document.getElementById("recap-modal").classList.add("open");
+}
+function closeRecap() {
+  document.getElementById("recap-modal").classList.remove("open");
+}
+
+function saveDbUrl() {
+  const url = document.getElementById("db-url-input").value.trim();
+  if (!url.startsWith("https://")) { toast("URL tidak valid."); return; }
+  initFirebase(url);
+}
+
+// Auto-init jika config sudah diisi
+if (FIREBASE_CONFIG.databaseURL !== "GANTI_DATABASE_URL") {
+  initFirebase(null);
+} else {
+  document.getElementById("dot").className = "online-dot";
+  document.getElementById("conn-status").textContent = "Belum terhubung";
+  // Fallback offline mode
+  RAW_ITEMS.forEach(i => { liveData[i.id] = {bids:{}, winner:null}; });
+  renderAll();
+}
+</script>
+</body>
+</html>
