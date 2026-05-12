@@ -649,6 +649,28 @@ let myKey  = "";
 const fmt = n =>
   "Rp" + Math.round(n || 0).toLocaleString("id-ID");
 
+/**
+ * Bid step (kelipatan) ditentukan dari harga buy now:
+ *   bn ≤ 100.000          → 20.000
+ *   100.000 < bn ≤ 2.000.000 → 50.000
+ *   bn > 2.000.000        → 100.000
+ */
+function getBidStep(bn){
+  if(bn <= 100000)   return 20000;
+  if(bn <= 2000000)  return 50000;
+  return 100000;
+}
+
+/**
+ * Hitung bid minimum berikutnya:
+ *   - Jika belum ada bid → gunakan minBid item (start bid)
+ *   - Jika sudah ada bid → top bid + step kelipatan sesuai buy now
+ */
+function getMinNextBid(item, currentTop){
+  if(!currentTop) return item.minBid || 0;
+  return currentTop + getBidStep(item.bn);
+}
+
 function toast(msg){
   const el = document.getElementById("toast");
   el.textContent = msg;
@@ -778,11 +800,11 @@ function doBid(id){
 
   if(!amt){ toast("Nominal tidak valid"); return; }
 
-  const top = existingBids.length
+  const currentTop = existingBids.length
     ? Math.max(...existingBids.map(b=>b.amt))
     : 0;
 
-  const min = top + (item.minBid || 0);
+  const min = getMinNextBid(item, currentTop);
 
   if(amt < min){ toast("Minimal bid " + fmt(min)); return; }
 
@@ -911,8 +933,12 @@ function renderCard(item){
         <div class="val blue">${fmt(item.bn)}</div>
       </div>
       <div class="price-item">
-        <div class="lbl">Min. Bid</div>
+        <div class="lbl">Start Bid</div>
         <div class="val">${fmt(item.minBid)}</div>
+      </div>
+      <div class="price-item">
+        <div class="lbl">Kelipatan</div>
+        <div class="val">${fmt(getBidStep(item.bn))}</div>
       </div>
       <div class="price-item">
         <div class="lbl">Top Bid</div>
@@ -924,7 +950,7 @@ function renderCard(item){
       <input
         type="number"
         id="ba-${item.id}"
-        placeholder="Nominal bid"
+        placeholder="Min ${fmt(getMinNextBid(item, top ? top.amt : 0))}"
         ${blocked ? 'disabled' : ''}>
 
       <button
