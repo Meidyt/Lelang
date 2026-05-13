@@ -698,14 +698,14 @@ function encodeAdmin(str){
   {id:3,  name:"Boneka",            merk:"-",             bn:200000,  minBid:20000},
   {id:4,  name:"Dispenser",         merk:"Klaz",          bn:3000000, minBid:100000},
   {id:5,  name:"Dispenser 2",       merk:"Kris",          bn:2500000, minBid:100000},
-  {id:6,  name:"Kulkas 1",          merk:"Hisense",       bn:1500000, minBid:50000},
-  {id:7,  name:"Kulkas 2",          merk:"Sharp",         bn:1300000, minBid:50000},
-  {id:8,  name:"Lemari Cokelat",    merk:"Custom",        bn:500000,  minBid:50000},
-  {id:9,  name:"Lemari Putih 1",    merk:"Informa",       bn:500000,  minBid:50000},
-  {id:10, name:"Lemari Putih 2",    merk:"Informa",       bn:500000,  minBid:50000},
-  {id:11, name:"Microwave 1",       merk:"Sharp (putih)", bn:800000,  minBid:50000},
-  {id:12, name:"Microwave 2",       merk:"Sharp (abu)",   bn:1659000, minBid:50000},
-  {id:15, name:"Rumput Sintetis",   merk:"-",             bn:200000,  minBid:20000},
+  {id:6,  name:"Kulkas 1",          merk:"Hisense",       bn:1500000, minBid:20000},
+  {id:7,  name:"Kulkas 2",          merk:"Sharp",         bn:1300000, minBid:20000},
+  {id:8,  name:"Lemari Cokelat",    merk:"Custom",        bn:500000,  minBid:20000},
+  {id:9,  name:"Lemari Putih 1",    merk:"Informa",       bn:500000,  minBid:20000},
+  {id:10, name:"Lemari Putih 2",    merk:"Informa",       bn:500000,  minBid:20000},
+  {id:11, name:"Microwave 1",       merk:"Sharp (putih)", bn:800000,  minBid:20000},
+  {id:12, name:"Microwave 2",       merk:"Sharp (abu)",   bn:1659000, minBid:20000},
+  {id:15, name:"Rumput Sintetis",   merk:"-",             bn:200000,  minBid:0},
   {id:16, name:"Toaster 1",         merk:"Philips",       bn:300000,  minBid:20000},
   {id:17, name:"Toaster Sandwich",  merk:"Philips",       bn:300000,  minBid:20000},
   {id:18, name:"TV 1",              merk:"Coocaa",        bn:4000000, minBid:100000}
@@ -722,25 +722,21 @@ const fmt = n =>
   "Rp" + Math.round(n || 0).toLocaleString("id-ID");
 
 /**
- * Bid step (kelipatan) ditentukan dari harga buy now:
- *   bn ≤ 100.000          → 20.000
- *   100.000 < bn ≤ 2.000.000 → 50.000
- *   bn > 2.000.000        → 100.000
+ * Bid step = minBid item itu sendiri.
+ * Semua bid harus kelipatan minBid, mulai dari minBid pertama.
  */
-function getBidStep(bn){
-  if(bn <= 300000)   return 20000;
-  if(bn <= 2000000)  return 50000;
-  return 100000;
+function getBidStep(item){
+  return item.minBid || 0;
 }
 
 /**
  * Hitung bid minimum berikutnya:
- *   - Jika belum ada bid → gunakan minBid item (start bid)
- *   - Jika sudah ada bid → top bid + step kelipatan sesuai buy now
+ *   - Jika belum ada bid → minBid item (start bid)
+ *   - Jika sudah ada bid → top bid + minBid (step)
  */
 function getMinNextBid(item, currentTop){
   if(!currentTop) return item.minBid || 0;
-  return currentTop + getBidStep(item.bn);
+  return currentTop + (item.minBid || 0);
 }
 
 function toast(msg){
@@ -886,8 +882,8 @@ function doBid(id){
 
   if(amt < min){ toast("Minimal bid " + fmt(min)); return; }
 
-  /* Bid harus kelipatan step */
-  const step = getBidStep(item.bn);
+  /* Bid harus kelipatan minBid */
+  const step = item.minBid || 0;
   if(step > 0 && amt % step !== 0){
     const rounded = Math.ceil(amt / step) * step;
     toast("Bid harus kelipatan " + fmt(step) + ". Coba " + fmt(rounded));
@@ -1105,7 +1101,7 @@ function renderCard(item){
       </div>
       <div class="price-item">
         <div class="lbl">Kelipatan</div>
-        <div class="val">${fmt(getBidStep(item.bn))}</div>
+        <div class="val">${fmt(item.minBid)}</div>
       </div>
       <div class="price-item">
         <div class="lbl">Top Bid</div>
@@ -1139,6 +1135,12 @@ function renderCard(item){
         onclick="finalizeWinner(${item.id})">
         ✅ Tutup
       </button>
+      <button
+        class="btn btn-red"
+        style="font-size:11px;padding:6px 10px"
+        onclick="resetItemBids(${item.id})">
+        🗑️ Reset bid
+      </button>
       ` : ''}
     </div>
 
@@ -1170,6 +1172,13 @@ function renderCard(item){
       🏆
       <span class="winner-name">${st.winner}</span>
       <span>${fmt(st.winPrice)}${howWon}</span>
+      ${isAdmin ? `
+      <button
+        class="btn btn-red"
+        style="font-size:11px;padding:4px 9px"
+        onclick="resetItemBids(${item.id})">
+        🗑️ Reset bid
+      </button>` : ''}
     </div>
     `;
   }
@@ -1178,6 +1187,13 @@ function renderCard(item){
   return html;
 }
 
+/* RESET BID SATU BARANG — ADMIN ONLY */
+function resetItemBids(id){
+  const item = ITEMS.find(i=>i.id===id);
+  if(!isAdmin){ toast("Perlu login admin dulu!"); return; }
+  if(!confirm("Reset semua bid untuk:\n" + item.name + "?\n\nSemua riwayat bid akan dihapus. Tidak bisa dibatalkan.")) return;
+  db.ref("items/"+id).remove().then(()=>toast("Bid " + item.name + " direset 🗑️"));
+}
 </script>
 </body>
 </html>
