@@ -886,6 +886,14 @@ function doBid(id){
 
   if(amt < min){ toast("Minimal bid " + fmt(min)); return; }
 
+  /* Bid harus kelipatan step */
+  const step = getBidStep(item.bn);
+  if(step > 0 && amt % step !== 0){
+    const rounded = Math.ceil(amt / step) * step;
+    toast("Bid harus kelipatan " + fmt(step) + ". Coba " + fmt(rounded));
+    return;
+  }
+
   db.ref("items/"+id+"/bids").push({
     name: myName,
     key:  myKey,
@@ -904,8 +912,14 @@ function doBuyNow(id){
 
   if(st.winner){ toast("Item sudah terjual"); return; }
 
-  /* Same active-bid cap — buy-now also "activates" a slot momentarily,
-     but immediately closes it, so we allow it freely.                  */
+  const confirmed = confirm(
+    "⚡ Konfirmasi Buy Now\n\n" +
+    "Barang : " + item.name + " (" + item.merk + ")\n" +
+    "Harga  : " + fmt(item.bn) + "\n\n" +
+    "Pembelian langsung tidak bisa dibatalkan.\nLanjutkan?"
+  );
+  if(!confirmed) return;
+
   db.ref("items/"+id).update({
     winner:      myName,
     winnerKey:   myKey,
@@ -913,7 +927,7 @@ function doBuyNow(id){
     wonByBuyNow: true
   });
 
-  toast("Buy Now berhasil ⚡");
+  toast("Buy Now berhasil! " + item.name + " jadi milikmu ⚡");
 }
 
 /* FINALIZE — ADMIN ONLY */
