@@ -759,13 +759,17 @@ function getState(id){
   return liveData[id] || { bids:{}, winner:null };
 }
 
-/* Count items that have at least one bid and are not yet won */
+/* Count items where myKey is currently the TOP bidder and item is not yet won.
+   "Active top bid" = I am leading (highest bid) on that item.
+   Once someone outbids me, that slot is freed up for me to bid elsewhere. */
 function countActiveBids(){
   return ITEMS.filter(item=>{
     const st = getState(item.id);
-    if(st.winner) return false;
+    if(st.winner) return false;                          // already closed
     const bids = st.bids ? Object.values(st.bids) : [];
-    return bids.length > 0;
+    if(!bids.length) return false;                       // no bids yet
+    const top = bids.reduce((a,b)=> b.amt > a.amt ? b : a);
+    return top.key === myKey;                            // I am the top bidder
   }).length;
 }
 
@@ -855,14 +859,18 @@ function doBid(id){
 
   if(st.winner){ toast("Item sudah terjual"); return; }
 
-  /* --- RULE: max 3 active bids ---
-     An item "activates" a bid slot when it gets its FIRST bid.
-     If this item has no bids yet, check the global cap.          */
+  /* --- RULE: max 3 active top bids per person ---
+     "Active" = I am currently the highest bidder on that item.
+     If I already lead this item, I can raise my bid freely.
+     Otherwise, check if I am already leading 3 other items.     */
   const existingBids = st.bids ? Object.values(st.bids) : [];
-  const isNewBid     = existingBids.length === 0;
+  const topBidObj    = existingBids.length
+    ? existingBids.reduce((a,b)=> b.amt > a.amt ? b : a)
+    : null;
+  const iAlreadyLead = topBidObj && topBidObj.key === myKey;
 
-  if(isNewBid && countActiveBids() >= MAX_ACTIVE_BIDS){
-    toast(`Maksimal ${MAX_ACTIVE_BIDS} item bisa dibid sekaligus. Tunggu salah satu ditutup dulu 🔒`);
+  if(!iAlreadyLead && countActiveBids() >= MAX_ACTIVE_BIDS){
+    toast(`Kamu sudah leading di ${MAX_ACTIVE_BIDS} barang. Tunggu salah satu dikalahkan dulu 🔒`);
     return;
   }
 
@@ -872,9 +880,7 @@ function doBid(id){
 
   if(!amt){ toast("Nominal tidak valid"); return; }
 
-  const currentTop = existingBids.length
-    ? Math.max(...existingBids.map(b=>b.amt))
-    : 0;
+  const currentTop = topBidObj ? topBidObj.amt : 0;
 
   const min = getMinNextBid(item, currentTop);
 
@@ -1056,10 +1062,9 @@ function renderCard(item){
   const isWon  = !!st.winner;
   const iAmLeading = top && top.key === myKey;
 
-  /* Is adding a new bid to this item blocked by the cap? */
-  const isNewBidItem   = bids.length === 0;
+  /* Blocked = I'm NOT already leading this item AND I'm already leading 3 others */
   const activeBidsFull = countActiveBids() >= MAX_ACTIVE_BIDS;
-  const blocked        = isNewBidItem && activeBidsFull && !isWon;
+  const blocked        = !isWon && !iAmLeading && activeBidsFull;
 
   let html = `
   <div class="card ${iAmLeading&&!isWon?'my-leading':''} ${isWon?'won':''}">
@@ -1125,7 +1130,7 @@ function renderCard(item){
 
     ${blocked ? `
     <div class="bid-limit-notice">
-      ⚠️ Sudah ${MAX_ACTIVE_BIDS} item sedang dibid. Tunggu salah satu ditutup untuk membid item baru.
+      ⚠️ Kamu sudah leading di 3 barang. Tunggu salah satu dikalahkan orang lain sebelum bisa bid di sini.
     </div>
     ` : ''}
     `;
