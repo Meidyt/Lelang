@@ -422,7 +422,67 @@ body{
   opacity:1;
 }
 
-/* MODAL */
+/* REKAP */
+.rekap-overlay{
+  position:fixed; inset:0;
+  background:rgba(0,0,0,.5);
+  display:none; align-items:flex-start;
+  justify-content:center;
+  padding:16px; z-index:450;
+  overflow-y:auto;
+}
+.rekap-overlay.open{ display:flex; }
+.rekap-box{
+  background:var(--surface);
+  border-radius:var(--radius);
+  width:100%; max-width:520px;
+  margin:auto;
+  overflow:hidden;
+}
+.rekap-header{
+  padding:14px 16px;
+  border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between;
+}
+.rekap-header h2{ font-size:16px; }
+.rekap-section{ padding:12px 16px 0; }
+.rekap-section-title{
+  font-size:11px; font-weight:700;
+  color:var(--text2); text-transform:uppercase;
+  letter-spacing:.05em; margin-bottom:8px;
+}
+.rekap-row{
+  display:flex; align-items:center;
+  gap:8px; padding:8px 0;
+  border-bottom:1px solid var(--border);
+  font-size:13px;
+}
+.rekap-row:last-child{ border-bottom:none; }
+.rekap-num{ color:var(--text3); min-width:20px; font-size:11px; }
+.rekap-name{ flex:1; font-weight:600; }
+.rekap-winner{ color:var(--green); font-weight:700; font-size:12px; }
+.rekap-price{ font-weight:700; font-size:13px; }
+.rekap-open{ color:var(--text3); font-style:italic; font-size:12px; }
+.rekap-footer{
+  padding:12px 16px;
+  border-top:1px solid var(--border);
+  display:flex; justify-content:space-between; align-items:center;
+}
+.rekap-total-label{ font-size:12px; color:var(--text2); }
+.rekap-total-val{ font-size:16px; font-weight:700; color:var(--green); }
+.rekap-winner-summary{
+  padding:12px 16px;
+  display:flex; flex-direction:column; gap:6px;
+}
+.rekap-winner-row{
+  display:flex; justify-content:space-between; align-items:center;
+  padding:8px 10px;
+  background:var(--green-bg);
+  border-radius:var(--radius-sm);
+}
+.rekap-winner-person{ font-weight:700; color:var(--green); font-size:13px; }
+.rekap-winner-items{ font-size:11px; color:var(--text2); }
+.rekap-winner-total{ font-weight:700; font-size:13px; }
 .modal-overlay{
   position:fixed;
   inset:0;
@@ -551,6 +611,7 @@ body{
     <option value="open">Open</option>
     <option value="won">Terjual</option>
   </select>
+  <button class="btn" onclick="openRekap()">📋 Rekap</button>
 </div>
 
 <div class="admin-bar" id="admin-bar">
@@ -564,6 +625,17 @@ body{
 
 <div class="toast" id="toast"></div>
 
+</div>
+
+<!-- REKAP MODAL -->
+<div class="rekap-overlay" id="rekap-overlay">
+  <div class="rekap-box">
+    <div class="rekap-header">
+      <h2>📋 Rekap Lelang</h2>
+      <button class="btn" onclick="closeModal('rekap-overlay')">✕ Tutup</button>
+    </div>
+    <div id="rekap-content"></div>
+  </div>
 </div>
 
 <!-- ADMIN MODAL -->
@@ -656,7 +728,7 @@ const fmt = n =>
  *   bn > 2.000.000        → 100.000
  */
 function getBidStep(bn){
-  if(bn <= 100000)   return 20000;
+  if(bn <= 300000)   return 20000;
   if(bn <= 2000000)  return 50000;
   return 100000;
 }
@@ -856,6 +928,82 @@ function finalizeWinner(id){
   });
 
   toast("Pemenang ditentukan ✅");
+}
+
+/* REKAP */
+function openRekap(){
+  // Build per-item list
+  let itemRows = "";
+  let totalRev = 0;
+
+  ITEMS.forEach((item, idx) => {
+    const st = getState(item.id);
+    if(st.winner){
+      totalRev += st.winPrice || 0;
+      const howWon = st.wonByBuyNow ? " (Buy Now)" : "";
+      itemRows += `
+      <div class="rekap-row">
+        <span class="rekap-num">${idx+1}</span>
+        <span class="rekap-name">${item.name}</span>
+        <span class="rekap-winner">🏆 ${st.winner}</span>
+        <span class="rekap-price">${fmt(st.winPrice)}${howWon}</span>
+      </div>`;
+    } else {
+      const bids = st.bids ? Object.values(st.bids) : [];
+      const top  = bids.length ? bids.reduce((a,b)=>b.amt>a.amt?b:a) : null;
+      itemRows += `
+      <div class="rekap-row">
+        <span class="rekap-num">${idx+1}</span>
+        <span class="rekap-name">${item.name}</span>
+        <span class="rekap-open">${top ? "Leading: "+top.name+" ("+fmt(top.amt)+")" : "Belum ada bid"}</span>
+      </div>`;
+    }
+  });
+
+  // Build per-winner summary
+  const winMap = {};
+  ITEMS.forEach(item => {
+    const st = getState(item.id);
+    if(st.winner){
+      if(!winMap[st.winner]) winMap[st.winner] = {items:[], total:0};
+      winMap[st.winner].items.push(item.name);
+      winMap[st.winner].total += st.winPrice || 0;
+    }
+  });
+
+  let winnerRows = "";
+  const winners = Object.entries(winMap).sort((a,b)=>b[1].total-a[1].total);
+  if(winners.length){
+    winners.forEach(([name, data]) => {
+      winnerRows += `
+      <div class="rekap-winner-row">
+        <div>
+          <div class="rekap-winner-person">🏆 ${name}</div>
+          <div class="rekap-winner-items">${data.items.join(", ")}</div>
+        </div>
+        <div class="rekap-winner-total">${fmt(data.total)}</div>
+      </div>`;
+    });
+  } else {
+    winnerRows = `<div style="font-size:13px;color:var(--text3);padding:8px 0">Belum ada pemenang</div>`;
+  }
+
+  document.getElementById("rekap-content").innerHTML = `
+    <div class="rekap-section">
+      <div class="rekap-section-title">Status Per Barang</div>
+      ${itemRows}
+    </div>
+    <div class="rekap-section" style="padding-top:14px">
+      <div class="rekap-section-title">Ringkasan Pemenang</div>
+      <div class="rekap-winner-summary">${winnerRows}</div>
+    </div>
+    <div class="rekap-footer">
+      <span class="rekap-total-label">Total Revenue</span>
+      <span class="rekap-total-val">${fmt(totalRev)}</span>
+    </div>
+  `;
+
+  document.getElementById("rekap-overlay").classList.add("open");
 }
 
 /* RENDER */
